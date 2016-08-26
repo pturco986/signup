@@ -61,7 +61,7 @@ welcome = """
     </style>
 </head>
 <body>
-    <h1>Welcome!</h1>
+    <h1>Welcome {Username}!</h1>
 """
 #html boilerplate for the bottom of every page
 footer = """
@@ -69,16 +69,18 @@ footer = """
 </html>
 """
 
-forminput = """
-    <form method = "post">
+form = """
+    <form action="/welcome" method = "post">
         <table>
             <tbody>
                 <tr>
                     <td>
                         <label for="username">Username:</label>
+
                     </td>
                     <td>
                         <input name="username" type="text"/>
+                        <td style="color: red"> {} </td>
                     </td>
                 </tr>
                 <tr>
@@ -87,6 +89,7 @@ forminput = """
                     </td>
                     <td>
                         <input name="password" type="password"/>
+                        <td style="color: red"> {} </td>
                     </td>
                 </tr>
                 <tr>
@@ -95,6 +98,7 @@ forminput = """
                     </td>
                     <td>
                         <input name="verify" type="password"/>
+                        <td style="color: red"> {} </td>
                     </td>
                 </tr>
                 <tr>
@@ -103,6 +107,7 @@ forminput = """
                     </td>
                     <td>
                         <input name="email" type="email"/>
+                        <td style="color: red"> {} </td>
                     </td>
                 </tr>
             </tbody>
@@ -128,47 +133,58 @@ def valid_email(email):
 class Signup(webapp2.RequestHandler):
     def get(self):
 
-        error = self.request.get("error")
+        name_error = self.request.get('name_error')
+        name_error_element = '<p class = "error">' + name_error + '</p>' if name_error else ""
 
-        response = header + forminput.format("") + footer
-        self.response.write(response)
+        pass_error = self.request.get('pass_error')
+        pass_error_element = '<p class = "error">' + pass_error + '</p>' if pass_error else ""
 
+        veri_error = self.request.get('veri_error')
+        veri_error_element = '<p class = "error">' + veri_error + '</p>' if veri_error else ""
+
+        email_error = self.request.get('email_error')
+        email_error_element = '<p class = "error">' + email_error + '</p>' if email_error else ""
+
+        self.response.write(header + form.format(name_error, pass_error, veri_error, email_error) + footer)
+
+class Welcome(webapp2.RequestHandler):
     def post(self):
+        error = ""
         #looking inside the requests to see what the user typed
         username = self.request.get("username")
         password = self.request.get("password")
         verify = self.request.get("verify")
         email = self.request.get("email")
 
-        params = dict(username = username,
-                      email = email)
-
-
         if not valid_username(username):
-            params['error_username'] = "That's not a valid username."
-            have_error = True
+            error = "name_error=Invalid username"
 
         if not valid_password(password):
-            params['error_password'] = "That wasn't a valid password."
-            have_error = True
+            if error != "":
+                error += "&"
+            error += "pass_error=Invalid password"
 
-        elif password != verify:
-            params['error_verify'] = "Your passwords didn't match."
-            have_error = True
+        if not password == verify:
+            if error != "":
+                error += "&"
+            error = "veri_error=Passwords do not match"
 
         if not valid_email(email):
-            params['error_email'] = "That's not a valid email."
-            have_error = True
+            if error != "":
+                error += "&"
+            error += "email_error=Invalid email"
 
-        new_username = "<strong>" + username + "</strong>"
-        success = "Congratulations, " + new_username + ", your account is activated!"
-        response = welcome + "<p>" + success + "</p>" + footer
+        username = cgi.escape(username)
+        password = cgi.escape(password)
+        verify = cgi.escape(verify)
+        email = cgi.escape(email)
 
-        #if have_error:
-        #    self.response.write(error)
-        #else:
-        self.response.write(response)
+        if error != "":
+            self.redirect("/?" + error)
+
+        self.response.write(header + "Welcome " + username + footer)
 
 app = webapp2.WSGIApplication([
-    ('/', Signup)
+    ('/', Signup),
+    ('/welcome', Welcome)
 ], debug=True)
